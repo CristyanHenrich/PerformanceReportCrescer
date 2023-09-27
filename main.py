@@ -24,83 +24,138 @@ def calcular_acertos(aluno, gabarito, materias):
         total_acertos += acertos_materia
     return acertos, total_acertos
 
-# Função para gerar gráfico de barras
-def gerar_grafico_barras(acertos, maximo, nome, prova):
+
+# Função atualizada para gerar gráfico de barras
+def gerar_grafico_barras(acertos, maximo, nome, prova, title):
     labels = list(acertos.keys())
-    valores = list(acertos.values())
+    valores_acertos = list(acertos.values())
+    valores_erros = [maximo[materia] - acertos[materia] for materia in labels]
     max_valores = [maximo[materia] for materia in labels]
     
     fig, ax = plt.subplots(figsize=(8, 6))
-    bar_width = 0.35
+    bar_width = 0.25  # Diminuída a largura da barra
     index = np.arange(len(labels))
     
-    bar1 = ax.bar(index, valores, bar_width, label='Acertos', color='b')
-    bar2 = ax.bar(index + bar_width, max_valores, bar_width, label='Total', color='grey', alpha=0.5)
+    bar1 = ax.bar(index - bar_width, valores_acertos, bar_width, label='Acertos', color='green')
+    bar2 = ax.bar(index, valores_erros, bar_width, label='Erros', color='red')
+    bar3 = ax.bar(index + bar_width, max_valores, bar_width, label='Total', color='grey', alpha=0.5)
     
     ax.set_xlabel('Matérias')
     ax.set_ylabel('Quantidade')
-    ax.set_title(f'Desempenho na {prova}')
-    ax.set_xticks(index + bar_width / 2)
-    ax.set_xticklabels(labels, rotation=45, ha='right')
+    ax.set_title(f'Desempenho na {title}')
+    ax.set_xticks(index)
+    ax.set_xticklabels(labels, rotation=0, ha='right')
     ax.legend()
+    
+    # Adicionar o número em cima de cada barra
+    for bar in bar1:
+        yval = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2, yval + 0.5, round(yval, 2), ha='center', va='bottom', fontsize=9)
+    
+    for bar in bar2:
+        yval = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2, yval + 0.5, round(yval, 2), ha='center', va='bottom', fontsize=9)
+    
+    for bar in bar3:
+        yval = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2, yval + 0.5, round(yval, 2), ha='center', va='bottom', fontsize=9)
+    
+    # Adicionar fundo quadriculado mais aparente
+    ax.grid(True, which='both', linestyle='--', linewidth=0.7, axis='y', alpha=0.9)
+    ax.set_axisbelow(True)
     
     plt.tight_layout()
     plt.savefig(f"{nome}_{prova}.png")
     plt.close()
 
-# Função para gerar gráfico de aproveitamento
-def gerar_grafico_aproveitamento(acertos, maximo, nome, prova):
+# Função atualizada para gerar gráfico de aproveitamento
+def gerar_grafico_aproveitamento(acertos, maximo, nome, prova, title):
+    materias = list(acertos.keys())
+    aproveitamentos = [(acertos[materia] / maximo[materia]) * 100 for materia in materias]
     total_acertos = sum(acertos.values())
     total_questoes = sum(maximo.values())
-    aproveitamento = (total_acertos / total_questoes) * 100
+    aproveitamento_geral = (total_acertos / total_questoes) * 100
     
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.bar(['Aproveitamento'], [aproveitamento], color='c')
-    ax.set_ylim(0, 100)
-    ax.set_ylabel('%')
-    ax.set_title(f'Aproveitamento na {prova}')
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.stem(materias, aproveitamentos, basefmt=" ", label='Por matéria', linefmt='-c', markerfmt='oc')
+    ax.axhline(y=aproveitamento_geral, color='purple', linestyle='-', label=f'Geral: {aproveitamento_geral:.2f}%')
+    
+    for i, txt in enumerate(aproveitamentos):
+        ax.text(i, txt + 3, f"{txt:.2f}%", ha='center', va='bottom', color='c')
+    
+    ax.set_ylim(0, 110)
+    ax.set_ylabel('% de Aproveitamento')
+    ax.set_title(f'Aproveitamento na {title}')
+    
+    # Adicionar fundo quadriculado mais aparente
+    ax.grid(True, which='both', linestyle='--', linewidth=0.7, axis='y', alpha=0.9)
+    ax.set_axisbelow(True)
+    
+    ax.legend(loc='upper left')
     
     plt.tight_layout()
     plt.savefig(f"{nome}_Aproveitamento_{prova}.png")
     plt.close()
 
-# Função para gerar PDF
 def gerar_pdf(nome, respostas1, respostas2, gabarito1, gabarito2):
+    pdf_path = f'pdfs/resultado_{nome}.pdf'
+    
     pdf = FPDF()
     pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
     
     # Cabeçalho
-    pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'Turma: 3º Ano', 0, 1, 'L')
-    pdf.cell(0, 10, f'Resultado de {nome}', 0, 1, 'C')
+    pdf.image('img/logo.png', x=10, y=8, w=30)
+    pdf.ln(15)  # Reduzindo o espaço após a logo
+    pdf.line(13, pdf.get_y(), 200, pdf.get_y())  # Linha divisória
     
-    # Gráficos de desempenho
+    # Nome do aluno
+    pdf.set_font('Arial', 'B', 14)
+    pdf.ln(2)
+    pdf.cell(0, 10, nome, 0, 1, 'C')
+    pdf.ln(2)  # Espaço após o nome
+    
+    # Gráficos de acertos e erros
     pdf.image(f"{nome}_Prova 1.png", x = 10, y = pdf.get_y(), w = 90)
     pdf.image(f"{nome}_Prova 2.png", x = 105, y = pdf.get_y(), w = 90)
-    pdf.ln(65)
-    
+    pdf.ln(70)  # Espaço após os gráficos
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())  # Linha divisória
+    pdf.ln(10)  # Espaço após a linha
+
     # Gráficos de aproveitamento
     pdf.image(f"{nome}_Aproveitamento_Prova 1.png", x = 10, y = pdf.get_y(), w = 90)
     pdf.image(f"{nome}_Aproveitamento_Prova 2.png", x = 105, y = pdf.get_y(), w = 90)
-    pdf.ln(65)
-    
-    # Respostas dos alunos
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(0, 10, 'Respostas Prova 1:', 0, 1)
+    pdf.ln(70)  # Espaço após os gráficos
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())  # Linha divisória
+    pdf.ln(5)  # Espaço após a linha
+
+     # Gabarito
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 10, 'Prova Português, História e Geografia', 0, 1, 'C')
+    pdf.set_font('Arial', '', 8)  # Reduzindo ainda mais a fonte
+    col_width = 45  # Largura da coluna
+    bolinha_diameter = 4
+    space_between = 5  # Espaço entre as questões
     for idx, (resposta, gab) in enumerate(zip(respostas1, gabarito1), 1):
-        cor = 'green' if resposta == gab else 'red'
-        pdf.set_text_color(0, 128, 0) if cor == 'green' else pdf.set_text_color(255, 0, 0)
-        pdf.cell(0, 8, f'Questão {idx}: {resposta} (Correta: {gab})', 0, 1)
+        cor = (0, 128, 0) if resposta == gab else (255, 0, 0)
+        y = pdf.get_y()
+        pdf.set_fill_color(*cor)
+        pdf.ellipse(10 + (idx-1)%4*col_width, y, bolinha_diameter, bolinha_diameter, style='F')
+        pdf.set_xy(10 + (idx-1)%4*col_width + bolinha_diameter + 2, y)  # Reposicionando o cursor
+        pdf.cell(col_width-10, space_between, f'Questão {idx}: {resposta}', 0, (idx%4==0), 'L')
     
-    pdf.ln(10)
-    pdf.cell(0, 10, 'Respostas Prova 2:', 0, 1)
+    pdf.ln(5)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 10, 'Prova Matemática, Ciências e Inglês', 0, 1, 'C')
+    pdf.set_font('Arial', '', 8)
     for idx, (resposta, gab) in enumerate(zip(respostas2, gabarito2), 1):
-        cor = 'green' if resposta == gab else 'red'
-        pdf.set_text_color(0, 128, 0) if cor == 'green' else pdf.set_text_color(255, 0, 0)
-        pdf.cell(0, 8, f'Questão {idx}: {resposta} (Correta: {gab})', 0, 1)
+        cor = (0, 128, 0) if resposta == gab else (255, 0, 0)
+        y = pdf.get_y()
+        pdf.set_fill_color(*cor)
+        pdf.ellipse(10 + (idx-1)%4*col_width, y, bolinha_diameter, bolinha_diameter, style='F')
+        pdf.set_xy(10 + (idx-1)%4*col_width + bolinha_diameter + 2, y)  # Reposicionando o cursor
+        pdf.cell(col_width-10, space_between, f'Questão {idx}: {resposta}', 0, (idx%4==0), 'L')
     
-    # Salvar PDF
-    pdf_path = f'pdfs/resultado_{nome}.pdf'
     pdf.output(pdf_path)
     
     # Remover imagens dos gráficos
@@ -151,10 +206,10 @@ for _, aluno in prova1.iterrows():
     maximo1 = {materia: len(questoes) for materia, questoes in materias1.items()}
     maximo2 = {materia: len(questoes) for materia, questoes in materias2.items()}
 
-    gerar_grafico_barras(acertos1, maximo1, nome, 'Prova 1')
-    gerar_grafico_barras(acertos2, maximo2, nome, 'Prova 2')
+    gerar_grafico_barras(acertos1, maximo1, nome, 'Prova 1', 'Prova Português, História e Geografia')
+    gerar_grafico_barras(acertos2, maximo2, nome, 'Prova 2', 'Prova Matemática, Ciências e Inglês')
     
-    gerar_grafico_aproveitamento(acertos1, maximo1, nome, 'Prova 1')
-    gerar_grafico_aproveitamento(acertos2, maximo2, nome, 'Prova 2')
+    gerar_grafico_aproveitamento(acertos1, maximo1, nome, 'Prova 1', 'Prova Português, História e Geografia')
+    gerar_grafico_aproveitamento(acertos2, maximo2, nome, 'Prova 2', 'Prova Matemática, Ciências e Inglês')
 
     gerar_pdf(nome, respostas1, respostas2, gabarito1, gabarito2)
